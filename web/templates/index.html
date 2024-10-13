@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Image Capture</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(145deg, #e6e6e6, #ffffff);
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column; /* Change to column for small screens */
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                flex-direction: row; /* Use row layout for larger screens */
+            }
+        }
+
+        .controls {
+            flex: 1;
+            padding: 20px;
+            margin-right: 20px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .camera {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        img {
+            max-width: 100%;
+            border-radius: 10px;
+        }
+
+        input {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 5px;
+            box-shadow: inset 4px 4px 10px rgba(0, 0, 0, 0.2), inset -4px -4px 10px rgba(255, 255, 255, 1);
+        }
+
+        button {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        h2 {
+            margin: 10px 0;
+        }
+
+        .image-list {
+            margin-top: 10px;
+            overflow-y: auto;
+            max-height: 400px; /* Set a maximum height for the image list */
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .image-item {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .image-item img {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+            border-radius: 5px;
+        }
+
+        #classNameDisplay {
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <h1>Hand Image Capture</h1>
+            <input type="text" id="className" placeholder="Enter class name">
+            <button onclick="setClassName()">Save Class Name</button>
+            <button onclick="startCapture()">Start Capturing</button>
+            <button onclick="stopCapture()">Stop Capturing</button>
+            <h2>Saved Images: <span id="counter">0</span></h2>
+            <div id="classNameDisplay"></div> <!-- Display class name here -->
+            <button id="downloadBtn" style="display: none;" onclick="downloadImages()">Download All Images</button>
+            <div class="image-list" id="imageList"></div>
+        </div>
+        <div class="camera">
+            <img src="{{ url_for('video_feed') }}" alt="Video Feed">
+        </div>
+    </div>
+
+    <script>
+        function setClassName() {
+            const className = document.getElementById('className').value;
+            fetch('/set_class_name', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ class_name: className }),
+            }).then(response => response.json())
+              .then(data => {
+                  console.log(data);
+                  document.getElementById('counter').innerText = 0;  // Reset counter display
+                  document.getElementById('imageList').innerHTML = '';  // Clear image list
+                  document.getElementById('classNameDisplay').innerText = `Class Name: ${className}`;  // Display class name
+                  document.getElementById('downloadBtn').style.display = 'block';  // Show download button
+              });
+        }
+
+        function startCapture() {
+            fetch('/start_capture', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    updateCounter();
+                });
+        }
+
+        function stopCapture() {
+            fetch('/stop_capture', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                });
+        }
+
+        // Function to update the counter and image list
+        function updateCounter() {
+            setInterval(() => {
+                fetch('/get_image_count')
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('counter').innerText = data.counter;
+                        updateImageList(data.images);
+                    });
+            }, 1000); // Update every second
+        }
+
+        // Function to update the list of captured images
+        function updateImageList(images) {
+            const imageList = document.getElementById('imageList');
+            imageList.innerHTML = ''; // Clear existing images
+            images.forEach(image => {
+                const imgElement = document.createElement('div');
+                imgElement.classList.add('image-item');
+                imgElement.innerHTML = `<img src="${image}" alt="Captured Image"><span>${image.split('/').pop()}</span>`;
+                imageList.appendChild(imgElement);
+            });
+        }
+
+        function downloadImages() {
+            window.location.href = '/download_images'; // Trigger download
+        }
+    </script>
+</body>
+</html>
