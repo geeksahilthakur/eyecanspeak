@@ -1,0 +1,8 @@
+cv2==2.1.2
+cvzone==1.6.1
+flask==3.0.3
+tensorflow==2.17.0
+numpy==2.1.2
+gunicorn==21.2.0
+zipfile36==0.1.3
+
